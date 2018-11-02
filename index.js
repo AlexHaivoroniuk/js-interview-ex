@@ -327,9 +327,9 @@ function reduceAsync(pArr, cb, accomulator) {
     )
 }
 
-let a = () => Promise.resolve('a')
-let b = () => Promise.resolve('b')
-let c = () => new Promise(resolve => setTimeout(() => resolve('c'), 100))
+// let a = () => Promise.resolve('a')
+// let b = () => Promise.resolve('b')
+// let c = () => new Promise(resolve => setTimeout(() => resolve('c'), 100))
 // await reduceAsync([a, b, c], (acc, value) => [...acc, value], [])
 // // ['a', 'b', 'c']
 // await reduceAsync([a, c, b], (acc, value) => [...acc, value], ['d'])
@@ -370,22 +370,39 @@ function seq(pArr) {
  */
 
  function permute(s) {
-
+    var results = {};
+    function recurse(word, remainder) {
+        if (remainder.length === 0) {
+            return results[word] = true;
+        }
+        for (var i = 0; i < remainder.length; ++i) {
+            recurse(word + remainder[i], remainder.substr(0, i) + remainder.substr(i+1));
+        }
+    }
+    recurse('', s);
+    return Object.keys(results);
  }
 
 //  console.log(permute(''));
 //  console.log(permute('abc'));
  
 
-function debounce(cd, delay) {
-
+function debounce(fn, delay) {
+    var timer = null;
+    return function (...args) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+            fn.apply(this, args);
+            timer = null;
+        }, delay);
+    }
 }
 
-// let a = () => console.log('foo')
-// let b = debounce(a, 100)
-// b()
-// b()
-// b() // только этот вызов должен вызывать a()
+let a = () => console.log('foo')
+let b = debounce(a, 100)
+b()
+b()
+b() // только этот вызов должен вызывать a()
 class Node {
     constructor(value) {
         this.value = value || null;
@@ -439,96 +456,244 @@ class LinkedList {
 // ll.has(4)                           // true
 // ll.has(6)                           // false
 
-function hash (string) {
+function hashFunc (string, tableSize) {
     return string
       .split('')
-      .reduce((a, b) => ((a << 5) + a) + b.charCodeAt(0), 5381)
+      .reduce((a, b) => ((a << 5) + a) + b.charCodeAt(0), 5381) % tableSize;
 }
 
 class HashMap {
-    constructor() {
-        this.storage = [];
+    constructor(tableSize) {
+        this._size = tableSize || 50;
+        this._storage = Array(this._size);
+        this._count = 0;
+    }
+    find(key) {
+        var hash = hashFunc(key, this._size);
+        this._storage[hash] = this._storage[hash] || [];
+        var bucket = this._storage[hash];
+        var match;
+        var matchIndex;
+        bucket.forEach((item, index) => {
+            if (item.hasOwnProperty(key)) {
+                match = item;
+                matchIndex = index
+            }
+        })
+        return {
+            bucket,
+            match,
+            matchIndex
+        }
     }
 
     set(key, value) {
-
+        var match = this.find(key).match;
+        var bucket = this.find(key).bucket;
+        if (match) {
+            match[key] = value;
+        } else {
+            var newItem = {};
+            newItem[key] = value;
+            this._count++;
+            bucket.push(newItem);
+        }
     }
 
+    remove(key) {
+        var match = this.find(key).match;
+        if (match) {
+            var bucket = this.find(key).bucket;
+            var matchIndex = this.find(key).matchIndex;
+            bucket.splice(matchIndex, 1);
+            this._count--
+        }
+        return !!match;
+    }
+    
     get(key) {
-
+        var match = this.find(key).match;
+        console.log(match && match[key]);
+        return match && match[key]
     }
 }
 
-let map = new HashMap
-map.set('abc', 123)                   // undefined
-map.set('foo', 'bar')                 // undefined
-map.set('foo', 'baz')                 // undefined
-map.get('abc')                        // 123
-map.get('foo')                        // 'baz'
-map.get('def')                        // undefined
+// let map = new HashMap()
+// map.set('abc', 123)                   // undefined
+// map.set('foo', 'bar')                 // undefined
+// map.set('foo', 'baz')                 // undefined
+// console.log(map._storage);
+// map.get('abc')                        // 123
+// map.get('foo')                        // 'baz'
+// map.get('def')                        // undefined
 
-
-class BinarySearchTree {
+class TreeNode {
     constructor() {
 
     }
-
-    add() {
-
+}
+class BinarySearchTree {
+    constructor(value) {
+        this.value = value;
+        this.left = null;
+        this.right = null;
+        this._root = this._root || this.value;
     }
 
-    has() {
-
+    add(...values) {
+        values.forEach(val => {
+            if (this.value === null) this.value = val;
+            else {
+                if (val < this.value) {
+                    if (this.left) this.left.add(val);
+                    else this.left = new BinarySearchTree(val);
+                } else if (val > this.value) {
+                    if (this.right) this.right.add(val);
+                    else this.right = new BinarySearchTree(val);
+                } else if (this.value === null ) {
+                    this.value = val
+                } 
+            } 
+        })
     }
 
-    remove() {
+    has(value) {
+        if (this.value === value) return true;
+        else if (value < this.value) {
+            if (this.left) return this.left.has(value);
+            else return false;
+        }
+        else if (value > this.value) {
+            if (this.right) return this.right.has(value);
+            else return false;
+        }
+    }
 
+    remove(value) {
+        var self = this;
+
+        function findMin(curr, parent, currRefs) {
+            if (curr.left) return findMin(curr.left, curr, currRefs);
+            else {
+                if (parent && parrent.right !== curr) {
+                    parent.left = null;
+                    curr.left = currRefs.l;
+                    curr.right = currRefs.r;
+                } else {
+                    curr.left = currRefs.l;
+                }
+                return curr;
+            }
+        }
+
+        function del(val, curr, parent) {
+            var parentChildRelation = null;
+
+            if (parent) {
+                if (val > parent.value) parentChildRelation = 'right'
+                else parentChildRelation = 'left'
+            }
+            //root case
+            if (curr.value === self._root) { 
+                if (curr.right) { // if has right child
+                    curr = findMin(curr.right, curr, {l: this._root.left, r: this._root.right});
+                    this._root = curr;
+                } else if (curr.left) { // if has left child
+                    var replacement = curr.left;
+                    var replaceParent = curr;
+                    while(replacement.right !== null) {
+                        replaceParent = replacement;
+                        replacement = replacement.right;
+                    }
+
+                    replaceParent.right = replacement.left;
+
+                    replacement.left = this._root.left;
+                    replacement.right = this._root.right;
+
+                    this._root = replacement;
+                } else { // if has no childs
+                    curr.value = null;
+                }
+            }
+            // Case 1 
+            else if (!curr.left && !curr.right) { // then its a leaf
+                parent[parentChildRelation] = null;
+                parentChildRelation = null;
+            } 
+            // Case 3
+            else if (curr.left && curr.right) { // has both children (curr.left && curr.right) replace with successor
+                var currRefs = { l: curr.left, r: curr.right };
+                parent[parentChildRelation] = findMin(curr.right, curr, currRefs);
+            }
+            else if (curr.left || curr.right) { //then it has one child
+                parent[parentChildRelation] = curr.left || curr.right;
+                parentChildRelation = curr.left ? 'left' : 'right';
+            }
+        }
+
+        function search(val, curr, parent) {
+            if (!curr) {
+                console.log('No nodes in tree');
+                return;
+            } 
+            else if (val === curr.value) del(val, curr, parent);
+            else if (val > curr.value) search(val, curr.right, curr);
+            else search(val, curr.left, curr);
+        }
+        search(value, self);
     }
 
     size() {
 
     }
-}
 
-let bst = new BinarySearchTree()
-bst.add(1, 2, 3, 4)
-bst.add(5)
-bst.has(2)                           // true
-bst.has(5)                           // true
-bst.remove(3)                        // undefined
-bst.size()       
-
-
-
-class BinaryTree {
-    constructor() {
-
+    inorder(cb) {
+        if (!!this.left) this.left.inorder(cb);
+        cb(this.value);
+        if (!!this.right) this.right.inorder(cb);
+        return; 
     }
-    add() {
-
+    preorder(cb) {
+        cb(this.value);
+        if (!!this.left) this.left.preorder(cb);
+        if (!!this.right) this.right.preorder(cb);
+        return; 
     }
-    
-    bfs() {
-
+    postorder(cb) {
+        if (!!this.left) this.left.postorder(cb);
+        if (!!this.right) this.right.postorder(cb);
+        cb(this.value);
+        return; 
     }
 
-    inorder() {
-
-    }
-
-    preorder() {
-
-    }
-
-    postorder() {
-
+    bfs(cb) {
+        var visited = {};
+        var queue = [this];
+        while(queue.length) {
+            var node  = queue.shift();
+            cb(node.value);
+            visited[node.value] = true;
+            if (node.left && !visited[node.left.value]) queue.push(node.left);
+            if (node.right && !visited[node.right.value]) queue.push(node.right);
+        }
     }
 }
 
-let tree = new BinaryTree()
-let fn = value => console.log(value)
-tree.add(1, 2, 3, 4)
-tree.bfs(fn)                          // undefined
-tree.inorder(fn)                      // undefined
-tree.preorder(fn)                     // undefined
-tree.postorder(fn)                    // undefined
+// let bst = new BinarySearchTree(11)
+// bst.add(1, 2, 3, 4, 6, 7, 8, 9)
+// console.log(bst)
+// console.log(bst.has(2))// true
+// console.log(bst.has(5))// true
+// console.log(bst.has(55))// true
+// bst.remove(3)                        // undefined
+// console.log(bst.has(3))// true
+// bst.size()       
+
+
+// bst.add(7, 5, 3, 6, 9, 8, 10, 15, 13, 12, 14, 20, 18, 25)
+// let fn = value => console.log(value)
+// bst.bfs(fn)                          // undefined
+// bst.inorder(fn)                      // undefined
+// bst.preorder(fn)                     // undefined
+// bst.postorder(fn)                    // undefined
